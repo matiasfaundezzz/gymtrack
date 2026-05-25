@@ -1,24 +1,21 @@
 import { useState, useEffect } from "react";
 
-// ── Persistence helpers ──────────────────────────────────────────────────────
-const load = (key, fallback) => {
-  try { return JSON.parse(localStorage.getItem(key)) ?? fallback; }
-  catch { return fallback; }
-};
+const load = (key, fallback) => { try { return JSON.parse(localStorage.getItem(key)) ?? fallback; } catch { return fallback; } };
 const save = (key, val) => localStorage.setItem(key, JSON.stringify(val));
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2);
+const fmtDate = (iso, opts) => new Date(iso).toLocaleDateString("es-ES", opts);
 
-// ── Constants ────────────────────────────────────────────────────────────────
 const MUSCLE_GROUPS = ["Pecho","Espalda","Hombros","Bíceps","Tríceps","Piernas","Glúteos","Core","Cardio"];
 const MUSCLE_COLORS = {
-  Pecho:"#ef4444",Espalda:"#3b82f6",Hombros:"#f97316",
-  Bíceps:"#8b5cf6",Tríceps:"#ec4899",Piernas:"#10b981",
-  Glúteos:"#f59e0b",Core:"#06b6d4",Cardio:"#6366f1",
+  Pecho:"#c0392b", Espalda:"#2471a3", Hombros:"#d35400",
+  Bíceps:"#7d3c98", Tríceps:"#c0185a", Piernas:"#1a7a4a",
+  Glúteos:"#b7770d", Core:"#0e7490", Cardio:"#3730a3",
 };
 
-// ── Icon ─────────────────────────────────────────────────────────────────────
-const Icon = ({ d, size = 20 }) => (
+// ── Icons ─────────────────────────────────────────────────────────────────────
+const Icon = ({ d, size = 18 }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
-    stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
     <path d={d} />
   </svg>
 );
@@ -32,44 +29,54 @@ const Icons = {
   close: "M18 6L6 18M6 6l12 12",
 };
 
-// ── Tiny UI components ───────────────────────────────────────────────────────
+// ── Design tokens ─────────────────────────────────────────────────────────────
+const T = {
+  bg: "#f7f5f2", bg2: "#f0ede8", surface: "#ffffff", surface2: "#faf9f7",
+  border: "#e8e3dc", border2: "#d9d2c8",
+  text: "#1a1714", text2: "#4a4540", muted: "#8a837a", dim: "#b5afa8",
+  accent: "#1a1714",
+  shadow: "0 1px 3px rgba(26,23,20,0.06), 0 4px 16px rgba(26,23,20,0.04)",
+  shadowMd: "0 2px 8px rgba(26,23,20,0.08), 0 8px 32px rgba(26,23,20,0.06)",
+};
+
+// ── Base components ───────────────────────────────────────────────────────────
 const Tag = ({ label, color }) => (
   <span style={{
-    background: color + "22", color, border: `1px solid ${color}44`,
-    borderRadius: 6, padding: "2px 8px", fontSize: 11, fontWeight: 700,
-    letterSpacing: ".04em", textTransform: "uppercase", fontFamily: "'Barlow Condensed', sans-serif",
+    background: color + "18", color, border: `1px solid ${color}30`,
+    borderRadius: 4, padding: "2px 7px", fontSize: 10, fontWeight: 600,
+    letterSpacing: ".07em", textTransform: "uppercase",
   }}>{label}</span>
 );
 
 const Btn = ({ onClick, children, variant = "primary", small, full, disabled }) => {
   const styles = {
-    primary: { background: "#c8f74a", color: "#0d1117", border: "none" },
-    ghost:   { background: "transparent", color: "#9ca3af", border: "1px solid #2a2d35" },
-    danger:  { background: "#ef444420", color: "#ef4444", border: "1px solid #ef444440" },
+    primary: { background: T.text, color: "#ffffff", border: "none" },
+    ghost:   { background: "transparent", color: T.muted, border: `1px solid ${T.border2}` },
+    danger:  { background: "#fef2f2", color: "#dc2626", border: "1px solid #fecaca" },
+    outline: { background: "transparent", color: T.text, border: `1.5px solid ${T.text}` },
   };
   return (
     <button onClick={onClick} disabled={disabled} style={{
       ...styles[variant],
-      borderRadius: 10, padding: small ? "6px 12px" : "10px 18px",
-      fontSize: small ? 13 : 14, fontWeight: 700,
-      cursor: disabled ? "not-allowed" : "pointer", opacity: disabled ? .5 : 1,
+      borderRadius: 8, padding: small ? "6px 14px" : "11px 20px",
+      fontSize: small ? 12 : 13, fontWeight: 600, letterSpacing: ".02em",
+      cursor: disabled ? "not-allowed" : "pointer", opacity: disabled ? .35 : 1,
       display: "inline-flex", alignItems: "center", gap: 6,
       width: full ? "100%" : "auto", justifyContent: "center",
-      transition: "opacity .15s",
+      transition: "opacity .15s, transform .1s",
     }}>{children}</button>
   );
 };
 
 const Field = ({ label, value, onChange, type = "text", placeholder, min, step }) => (
-  <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-    {label && <label style={{ fontSize: 11, color: "#6b7280", fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase" }}>{label}</label>}
+  <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+    {label && <label style={{ fontSize: 10, color: T.muted, fontWeight: 600, letterSpacing: ".08em", textTransform: "uppercase" }}>{label}</label>}
     <input
       type={type} value={value} onChange={e => onChange(e.target.value)}
       placeholder={placeholder} min={min} step={step}
       style={{
-        background: "#161b22", border: "1px solid #2a2d35", borderRadius: 10,
-        color: "#f0f6fc", padding: "10px 14px", fontSize: 14, width: "100%",
-        outline: "none",
+        background: T.surface2, border: `1px solid ${T.border}`, borderRadius: 8,
+        color: T.text, padding: "10px 13px", fontSize: 14, width: "100%",
       }}
     />
   </div>
@@ -77,54 +84,51 @@ const Field = ({ label, value, onChange, type = "text", placeholder, min, step }
 
 const Card = ({ children, style = {}, onClick }) => (
   <div onClick={onClick} style={{
-    background: "#161b22", border: "1px solid #21262d", borderRadius: 16,
-    padding: 16, cursor: onClick ? "pointer" : "default", ...style,
+    background: T.surface, border: `1px solid ${T.border}`, borderRadius: 14,
+    padding: 16, boxShadow: T.shadow,
+    cursor: onClick ? "pointer" : "default",
+    transition: "box-shadow .2s, transform .15s",
+    ...style,
   }}>{children}</div>
 );
 
-const StatCard = ({ emoji, value, label }) => (
-  <Card style={{ flex: 1, textAlign: "center", padding: "10px 8px" }}>
-    <div style={{ fontSize: 18 }}>{emoji}</div>
-    <div style={{ fontSize: 15, fontWeight: 800, color: "#f0f6fc", fontFamily: "'Barlow Condensed', sans-serif" }}>{value}</div>
-    <div style={{ fontSize: 10, color: "#6b7280", textTransform: "uppercase", fontWeight: 600 }}>{label}</div>
-  </Card>
-);
+const Divider = () => <div style={{ height: 1, background: T.border, margin: "4px 0" }} />;
 
-// ── Sparkline chart ──────────────────────────────────────────────────────────
+// ── Sparkline ─────────────────────────────────────────────────────────────────
 function Sparkline({ data, color }) {
   if (data.length < 2) return (
-    <div style={{ textAlign: "center", color: "#6b7280", marginTop: 30 }}>
-      <div style={{ fontSize: 32, marginBottom: 8 }}>📈</div>
-      <div>Necesitas al menos 2 sesiones para ver el progreso</div>
+    <div style={{ textAlign: "center", color: T.dim, padding: "40px 0" }}>
+      <div style={{ fontSize: 28, marginBottom: 10 }}>〰️</div>
+      <div style={{ fontSize: 13 }}>Necesitas al menos 2 sesiones para ver el progreso</div>
     </div>
   );
-  const W = 340, H = 100, pad = 16;
+  const W = 340, H = 110, padX = 20, padY = 20;
   const maxV = Math.max(...data.map(d => d.max));
   const minV = Math.min(...data.map(d => d.max));
   const range = maxV - minV || 1;
   const pts = data.map((d, i) => ({
-    x: pad + (i / (data.length - 1)) * (W - pad * 2),
-    y: H - pad - ((d.max - minV) / range) * (H - pad * 2),
+    x: padX + (i / (data.length - 1)) * (W - padX * 2),
+    y: H - padY - ((d.max - minV) / range) * (H - padY * 2),
     ...d,
   }));
   const poly = pts.map(p => `${p.x},${p.y}`).join(" ");
-  const area = `M${pts[0].x},${H - pad} ` + pts.map(p => `L${p.x},${p.y}`).join(" ") + ` L${pts[pts.length - 1].x},${H - pad} Z`;
+  const area = `M${pts[0].x},${H - padY} ` + pts.map(p => `L${p.x},${p.y}`).join(" ") + ` L${pts[pts.length - 1].x},${H - padY} Z`;
   return (
     <svg width="100%" viewBox={`0 0 ${W} ${H}`} style={{ overflow: "visible" }}>
       <defs>
         <linearGradient id="grad" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor={color} stopOpacity=".3" />
+          <stop offset="0%" stopColor={color} stopOpacity=".15" />
           <stop offset="100%" stopColor={color} stopOpacity="0" />
         </linearGradient>
       </defs>
       <path d={area} fill="url(#grad)" />
-      <polyline points={poly} fill="none" stroke={color} strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />
+      <polyline points={poly} fill="none" stroke={color} strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
       {pts.map((p, i) => (
         <g key={i}>
-          <circle cx={p.x} cy={p.y} r={4} fill={color} />
-          <text x={p.x} y={H} textAnchor="middle" fontSize="9" fill="#6b7280">{p.date}</text>
+          <circle cx={p.x} cy={p.y} r={3.5} fill={T.surface} stroke={color} strokeWidth="1.5" />
+          <text x={p.x} y={H + 2} textAnchor="middle" fontSize="8.5" fill={T.dim} fontFamily="DM Sans">{p.date}</text>
           {(i === 0 || i === data.length - 1 || p.max === maxV) && (
-            <text x={p.x} y={p.y - 8} textAnchor="middle" fontSize="10" fill={color} fontWeight="700">{p.max}</text>
+            <text x={p.x} y={p.y - 9} textAnchor="middle" fontSize="9.5" fill={color} fontWeight="600" fontFamily="DM Sans">{p.max}</text>
           )}
         </g>
       ))}
@@ -132,11 +136,16 @@ function Sparkline({ data, color }) {
   );
 }
 
-// ── Helpers ──────────────────────────────────────────────────────────────────
-const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2);
-const fmtDate = (iso, opts) => new Date(iso).toLocaleDateString("es-ES", opts);
+// ── StatCard ──────────────────────────────────────────────────────────────────
+const StatCard = ({ emoji, value, label }) => (
+  <Card style={{ flex: 1, textAlign: "center", padding: "12px 8px" }}>
+    <div style={{ fontSize: 16, marginBottom: 4 }}>{emoji}</div>
+    <div style={{ fontSize: 16, fontWeight: 700, color: T.text, fontFamily: "'Cormorant Garamond', serif", letterSpacing: "-.02em" }}>{value}</div>
+    <div style={{ fontSize: 9, color: T.dim, textTransform: "uppercase", fontWeight: 600, letterSpacing: ".08em", marginTop: 2 }}>{label}</div>
+  </Card>
+);
 
-// ── HomeScreen ───────────────────────────────────────────────────────────────
+// ── HomeScreen ────────────────────────────────────────────────────────────────
 function HomeScreen({ exercises, sessions, onSelect, onAdd }) {
   const [filter, setFilter] = useState("Todos");
   const groups = ["Todos", ...MUSCLE_GROUPS];
@@ -154,61 +163,75 @@ function HomeScreen({ exercises, sessions, onSelect, onAdd }) {
   };
 
   return (
-    <div style={{ padding: "0 16px 100px" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "20px 0 16px" }}>
-        <div>
-          <div style={{ fontSize: 22, fontWeight: 800, fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: "-.5px" }}>GymTrack</div>
-          <div style={{ fontSize: 13, color: "#6b7280" }}>{exercises.length} ejercicios registrados</div>
+    <div style={{ padding: "0 20px 100px", background: T.bg, minHeight: "100vh" }}>
+      {/* Header */}
+      <div style={{ padding: "28px 0 8px", borderBottom: `1px solid ${T.border}`, marginBottom: 20 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end" }}>
+          <div>
+            <div style={{ fontSize: 11, color: T.dim, fontWeight: 600, letterSpacing: ".1em", textTransform: "uppercase", marginBottom: 4 }}>Tu colección</div>
+            <div style={{ fontSize: 30, fontWeight: 300, fontFamily: "'Cormorant Garamond', serif", letterSpacing: "-.03em", color: T.text, lineHeight: 1 }}>Ejercicios</div>
+          </div>
+          <button onClick={onAdd} style={{
+            width: 38, height: 38, borderRadius: 10, background: T.text,
+            border: "none", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff",
+            boxShadow: T.shadowMd,
+          }}><Icon d={Icons.plus} size={18} /></button>
         </div>
-        <button onClick={onAdd} style={{
-          width: 42, height: 42, borderRadius: 12, background: "#c8f74a",
-          border: "none", display: "flex", alignItems: "center", justifyContent: "center", color: "#0d1117",
-        }}><Icon d={Icons.plus} size={22} /></button>
+        <div style={{ fontSize: 12, color: T.dim, marginTop: 6 }}>{exercises.length} ejercicios · {sessions.length} sesiones totales</div>
       </div>
 
-      <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 12, scrollbarWidth: "none", marginBottom: 4 }}>
+      {/* Filter pills */}
+      <div style={{ display: "flex", gap: 6, overflowX: "auto", paddingBottom: 16, scrollbarWidth: "none" }}>
         {groups.map(g => {
-          const color = MUSCLE_COLORS[g] || "#c8f74a";
+          const color = MUSCLE_COLORS[g] || T.text;
           const active = filter === g;
           return (
             <button key={g} onClick={() => setFilter(g)} style={{
-              whiteSpace: "nowrap", padding: "6px 14px", borderRadius: 20,
-              border: active ? "none" : "1px solid #2a2d35",
-              background: active ? color : "transparent",
-              color: active ? (g === "Todos" ? "#0d1117" : "#fff") : "#9ca3af",
-              fontSize: 13, fontWeight: 600, cursor: "pointer",
+              whiteSpace: "nowrap", padding: "5px 13px", borderRadius: 20,
+              border: active ? `1.5px solid ${color}` : `1px solid ${T.border}`,
+              background: active ? color + "12" : T.surface,
+              color: active ? color : T.muted,
+              fontSize: 12, fontWeight: 600, cursor: "pointer",
+              boxShadow: active ? "none" : T.shadow,
+              transition: "all .2s",
             }}>{g}</button>
           );
         })}
       </div>
 
+      {/* Cards */}
       {filtered.length === 0 ? (
-        <div style={{ textAlign: "center", color: "#6b7280", marginTop: 60 }}>
-          <div style={{ fontSize: 40, marginBottom: 12 }}>🏋️</div>
-          <div style={{ fontWeight: 700, color: "#9ca3af", marginBottom: 6 }}>Sin ejercicios aún</div>
-          <div style={{ fontSize: 13 }}>Toca el + para agregar tu primer ejercicio</div>
+        <div style={{ textAlign: "center", color: T.dim, marginTop: 80, padding: "0 20px" }}>
+          <div style={{ fontSize: 36, marginBottom: 16 }}>🏋️</div>
+          <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 22, fontWeight: 400, color: T.text2, marginBottom: 8 }}>Sin ejercicios aún</div>
+          <div style={{ fontSize: 13, lineHeight: 1.6 }}>Toca el botón + para registrar tu primer ejercicio</div>
         </div>
       ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 12 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {filtered.map(ex => {
             const best = getBest(ex.id);
             const streak = getStreak(ex.id);
             const count = sessions.filter(s => s.exerciseId === ex.id).length;
-            const color = MUSCLE_COLORS[ex.group] || "#c8f74a";
+            const color = MUSCLE_COLORS[ex.group] || T.text;
             return (
               <Card key={ex.id} onClick={() => onSelect(ex)} style={{ padding: "14px 16px" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                   <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 16, fontWeight: 700, fontFamily: "'Barlow Condensed', sans-serif", color: "#f0f6fc", marginBottom: 6 }}>{ex.name}</div>
-                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                    <div style={{ fontSize: 15, fontWeight: 600, color: T.text, marginBottom: 6, letterSpacing: "-.01em" }}>{ex.name}</div>
+                    <div style={{ display: "flex", gap: 5 }}>
                       <Tag label={ex.group} color={color} />
-                      {streak > 0 && <Tag label={`${streak} sem`} color="#c8f74a" />}
+                      {streak > 0 && <Tag label={`${streak} sem`} color={T.muted} />}
                     </div>
                   </div>
-                  <div style={{ textAlign: "right" }}>
-                    {best !== null
-                      ? <><div style={{ fontSize: 22, fontWeight: 800, color: "#c8f74a", fontFamily: "'Barlow Condensed', sans-serif" }}>{best}<span style={{ fontSize: 12, color: "#6b7280" }}> kg</span></div><div style={{ fontSize: 11, color: "#6b7280" }}>{count} sesiones</div></>
-                      : <div style={{ fontSize: 12, color: "#6b7280" }}>Sin datos</div>}
+                  <div style={{ textAlign: "right", paddingLeft: 12 }}>
+                    {best !== null ? (
+                      <>
+                        <div style={{ fontSize: 22, fontWeight: 300, color: T.text, fontFamily: "'Cormorant Garamond', serif", letterSpacing: "-.02em", lineHeight: 1 }}>
+                          {best}<span style={{ fontSize: 12, color: T.dim, fontFamily: "inherit" }}> kg</span>
+                        </div>
+                        <div style={{ fontSize: 10, color: T.dim, marginTop: 3, letterSpacing: ".04em" }}>{count} sesiones</div>
+                      </>
+                    ) : <div style={{ fontSize: 11, color: T.dim }}>Sin datos</div>}
                   </div>
                 </div>
               </Card>
@@ -220,49 +243,58 @@ function HomeScreen({ exercises, sessions, onSelect, onAdd }) {
   );
 }
 
-// ── AddExerciseScreen ────────────────────────────────────────────────────────
+// ── AddExerciseScreen ─────────────────────────────────────────────────────────
 function AddExerciseScreen({ onSave, onBack }) {
   const [name, setName] = useState("");
   const [group, setGroup] = useState("Pecho");
   const [notes, setNotes] = useState("");
 
   return (
-    <div style={{ padding: "0 16px 100px" }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "20px 0 24px" }}>
-        <button onClick={onBack} style={{ background: "none", border: "none", color: "#9ca3af", cursor: "pointer", padding: 0 }}>
-          <Icon d={Icons.back} size={22} />
+    <div style={{ padding: "0 20px 100px", background: T.bg, minHeight: "100vh" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 14, padding: "28px 0 24px", borderBottom: `1px solid ${T.border}`, marginBottom: 24 }}>
+        <button onClick={onBack} style={{ background: "none", border: "none", color: T.muted, cursor: "pointer", padding: 0, display: "flex" }}>
+          <Icon d={Icons.back} size={20} />
         </button>
-        <div style={{ fontSize: 20, fontWeight: 800, fontFamily: "'Barlow Condensed', sans-serif" }}>Nuevo Ejercicio</div>
+        <div>
+          <div style={{ fontSize: 11, color: T.dim, fontWeight: 600, letterSpacing: ".1em", textTransform: "uppercase" }}>Nuevo</div>
+          <div style={{ fontSize: 26, fontWeight: 300, fontFamily: "'Cormorant Garamond', serif", letterSpacing: "-.03em", lineHeight: 1.1 }}>Ejercicio</div>
+        </div>
       </div>
-      <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+
+      <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
         <Field label="Nombre del ejercicio" value={name} onChange={setName} placeholder="ej. Press Banca" />
-        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          <label style={{ fontSize: 11, color: "#6b7280", fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase" }}>Grupo muscular</label>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+
+        <div>
+          <div style={{ fontSize: 10, color: T.muted, fontWeight: 600, letterSpacing: ".08em", textTransform: "uppercase", marginBottom: 10 }}>Grupo muscular</div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 7 }}>
             {MUSCLE_GROUPS.map(g => {
               const color = MUSCLE_COLORS[g];
               const sel = group === g;
               return (
                 <button key={g} onClick={() => setGroup(g)} style={{
-                  padding: "8px 14px", borderRadius: 10, fontSize: 13, fontWeight: 600, cursor: "pointer",
-                  background: sel ? color + "33" : "transparent",
-                  color: sel ? color : "#9ca3af",
-                  border: sel ? `2px solid ${color}` : "1px solid #2a2d35",
+                  padding: "7px 13px", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer",
+                  background: sel ? color + "15" : T.surface,
+                  color: sel ? color : T.muted,
+                  border: sel ? `1.5px solid ${color}40` : `1px solid ${T.border}`,
+                  boxShadow: sel ? "none" : T.shadow,
+                  transition: "all .15s",
                 }}>{g}</button>
               );
             })}
           </div>
         </div>
-        <Field label="Notas (opcional)" value={notes} onChange={setNotes} placeholder="Forma, agarre, rack..." />
+
+        <Field label="Notas (opcional)" value={notes} onChange={setNotes} placeholder="Forma, agarre, observaciones..." />
+
         <Btn onClick={() => { if (name.trim()) onSave({ name: name.trim(), group, notes }); }} full disabled={!name.trim()}>
-          <Icon d={Icons.check} size={18} /> Guardar Ejercicio
+          <Icon d={Icons.check} size={16} /> Guardar ejercicio
         </Btn>
       </div>
     </div>
   );
 }
 
-// ── ExerciseScreen ───────────────────────────────────────────────────────────
+// ── ExerciseScreen ────────────────────────────────────────────────────────────
 function ExerciseScreen({ exercise, sessions, onLogSession, onDelete, onBack }) {
   const [tab, setTab] = useState("log");
   const [sets, setSets] = useState([{ weight: "", reps: "" }]);
@@ -272,7 +304,7 @@ function ExerciseScreen({ exercise, sessions, onLogSession, onDelete, onBack }) 
   const lastSess = ss[0];
   const allW = ss.flatMap(s => s.sets.map(x => x.weight));
   const globalMax = allW.length ? Math.max(...allW) : 0;
-  const color = MUSCLE_COLORS[exercise.group] || "#c8f74a";
+  const color = MUSCLE_COLORS[exercise.group] || T.text;
 
   const saveSession = () => {
     const valid = sets.filter(s => s.weight !== "" && s.reps !== "");
@@ -288,135 +320,137 @@ function ExerciseScreen({ exercise, sessions, onLogSession, onDelete, onBack }) 
     max: Math.max(...s.sets.map(x => x.weight)),
   }));
 
-  const TABS = [["log", "Registrar"], ["history", "Historial"], ["progress", "Progreso"]];
+  const TABS = [["log","Registrar"],["history","Historial"],["progress","Progreso"]];
 
   return (
-    <div style={{ padding: "0 16px 100px" }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "20px 0 4px" }}>
-        <button onClick={onBack} style={{ background: "none", border: "none", color: "#9ca3af", cursor: "pointer", padding: 0 }}>
-          <Icon d={Icons.back} size={22} />
-        </button>
-        <div style={{ flex: 1 }}>
-          <div style={{ fontSize: 18, fontWeight: 800, fontFamily: "'Barlow Condensed', sans-serif" }}>{exercise.name}</div>
-          <Tag label={exercise.group} color={color} />
+    <div style={{ padding: "0 20px 100px", background: T.bg, minHeight: "100vh" }}>
+      {/* Header */}
+      <div style={{ padding: "28px 0 16px", borderBottom: `1px solid ${T.border}`, marginBottom: 18 }}>
+        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 8 }}>
+          <button onClick={onBack} style={{ background: "none", border: "none", color: T.muted, cursor: "pointer", padding: "2px 0", display: "flex" }}>
+            <Icon d={Icons.back} size={20} />
+          </button>
+          <button onClick={onDelete} style={{ background: "none", border: "none", color: T.dim, cursor: "pointer", padding: 2, display: "flex" }}>
+            <Icon d={Icons.trash} size={16} />
+          </button>
         </div>
-        <button onClick={onDelete} style={{ background: "none", border: "none", color: "#ef4444", cursor: "pointer", padding: 4 }}>
-          <Icon d={Icons.trash} size={18} />
-        </button>
+        <div style={{ fontSize: 28, fontWeight: 300, fontFamily: "'Cormorant Garamond', serif", letterSpacing: "-.03em", color: T.text, lineHeight: 1.1, marginBottom: 8 }}>{exercise.name}</div>
+        <Tag label={exercise.group} color={color} />
+        {exercise.notes && <div style={{ marginTop: 10, fontSize: 12, color: T.muted, fontStyle: "italic", lineHeight: 1.5 }}>{exercise.notes}</div>}
       </div>
 
-      {exercise.notes && (
-        <div style={{ background: "#21262d", borderRadius: 10, padding: "8px 12px", margin: "10px 0", fontSize: 13, color: "#9ca3af" }}>
-          📝 {exercise.notes}
-        </div>
-      )}
-
+      {/* Stats */}
       {ss.length > 0 && (
-        <div style={{ display: "flex", gap: 10, margin: "12px 0 16px" }}>
+        <div style={{ display: "flex", gap: 8, marginBottom: 18 }}>
           <StatCard emoji="🏆" value={`${globalMax} kg`} label="Mejor marca" />
           <StatCard emoji="📅" value={ss.length} label="Sesiones" />
           <StatCard emoji="⏱" value={fmtDate(ss[0].date, { day: "2-digit", month: "2-digit" })} label="Última" />
         </div>
       )}
 
-      <div style={{ display: "flex", background: "#161b22", border: "1px solid #21262d", borderRadius: 12, padding: 4, marginBottom: 16, gap: 2 }}>
+      {/* Tabs */}
+      <div style={{ display: "flex", borderBottom: `1px solid ${T.border}`, marginBottom: 20, gap: 0 }}>
         {TABS.map(([t, label]) => (
           <button key={t} onClick={() => setTab(t)} style={{
-            flex: 1, padding: 8, borderRadius: 9, border: "none", fontSize: 13, fontWeight: 700, cursor: "pointer",
-            background: tab === t ? color : "transparent",
-            color: tab === t ? (color === "#c8f74a" ? "#0d1117" : "#fff") : "#6b7280",
-            transition: "all .2s",
+            flex: 1, padding: "10px 0", border: "none", background: "transparent",
+            fontSize: 12, fontWeight: 600, letterSpacing: ".04em", cursor: "pointer",
+            color: tab === t ? T.text : T.dim,
+            borderBottom: tab === t ? `2px solid ${T.text}` : "2px solid transparent",
+            marginBottom: "-1px", transition: "all .2s",
           }}>{label}</button>
         ))}
       </div>
 
-      {/* LOG TAB */}
+      {/* LOG */}
       {tab === "log" && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
           {lastSess && (
-            <Card style={{ border: `1px solid ${color}33`, background: color + "0d" }}>
-              <div style={{ fontSize: 12, color, fontWeight: 700, marginBottom: 8, textTransform: "uppercase", fontFamily: "'Barlow Condensed', sans-serif" }}>
-                Última sesión — {fmtDate(lastSess.date, { day: "2-digit", month: "2-digit" })}
+            <div style={{ background: T.surface2, border: `1px solid ${T.border}`, borderRadius: 10, padding: "12px 14px" }}>
+              <div style={{ fontSize: 10, color: T.dim, fontWeight: 600, letterSpacing: ".08em", textTransform: "uppercase", marginBottom: 8 }}>
+                Última sesión · {fmtDate(lastSess.date, { day: "numeric", month: "short" })}
               </div>
               {lastSess.sets.map((s, i) => (
-                <div key={i} style={{ fontSize: 13, color: "#9ca3af", display: "flex", gap: 16 }}>
+                <div key={i} style={{ display: "flex", justifyContent: "space-between", fontSize: 13, color: T.muted, padding: "2px 0" }}>
                   <span>Serie {i + 1}</span>
-                  <span style={{ color: "#f0f6fc", fontWeight: 700 }}>{s.weight} kg × {s.reps} reps</span>
+                  <span style={{ color: T.text, fontWeight: 600 }}>{s.weight} kg · {s.reps} reps</span>
                 </div>
               ))}
-            </Card>
+            </div>
           )}
-          <div style={{ fontSize: 11, fontWeight: 700, color: "#9ca3af", textTransform: "uppercase", letterSpacing: ".06em", fontFamily: "'Barlow Condensed', sans-serif" }}>Series de hoy</div>
+
+          <div style={{ fontSize: 10, color: T.muted, fontWeight: 600, letterSpacing: ".08em", textTransform: "uppercase" }}>Series de hoy</div>
+
           {sets.map((s, i) => (
             <div key={i} style={{ display: "flex", gap: 10, alignItems: "flex-end" }}>
-              <div style={{ width: 28, height: 28, borderRadius: 8, background: color + "22", color, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 800, flexShrink: 0, marginBottom: 2, fontFamily: "'Barlow Condensed', sans-serif" }}>{i + 1}</div>
+              <div style={{ width: 26, height: 26, borderRadius: 7, background: T.bg2, border: `1px solid ${T.border}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, color: T.muted, flexShrink: 0, marginBottom: 2 }}>{i + 1}</div>
               <div style={{ flex: 1 }}><Field label="Kg" type="number" min="0" step="0.5" value={s.weight} onChange={v => setSets(sets.map((x, j) => j === i ? { ...x, weight: v } : x))} placeholder="0" /></div>
               <div style={{ flex: 1 }}><Field label="Reps" type="number" min="0" step="1" value={s.reps} onChange={v => setSets(sets.map((x, j) => j === i ? { ...x, reps: v } : x))} placeholder="0" /></div>
               {sets.length > 1 && (
-                <button onClick={() => setSets(sets.filter((_, j) => j !== i))} style={{ background: "none", border: "none", color: "#ef444480", cursor: "pointer", padding: 4, marginBottom: 2 }}>
-                  <Icon d={Icons.close} size={16} />
+                <button onClick={() => setSets(sets.filter((_, j) => j !== i))} style={{ background: "none", border: "none", color: T.dim, cursor: "pointer", padding: 4, marginBottom: 2 }}>
+                  <Icon d={Icons.close} size={14} />
                 </button>
               )}
             </div>
           ))}
-          <Btn onClick={() => setSets([...sets, { weight: "", reps: "" }])} variant="ghost" full>+ Agregar serie</Btn>
-          <Field label="Nota (opcional)" value={note} onChange={setNote} placeholder="Cómo te sentiste..." />
+
+          <Btn onClick={() => setSets([...sets, { weight: "", reps: "" }])} variant="ghost" full small>+ Agregar serie</Btn>
+          <Field label="Nota (opcional)" value={note} onChange={setNote} placeholder="Cómo te sentiste hoy..." />
           <Btn onClick={saveSession} full disabled={!sets.some(s => s.weight !== "" && s.reps !== "")}>
-            <Icon d={Icons.check} size={18} /> Guardar Sesión
+            <Icon d={Icons.check} size={16} /> Guardar sesión
           </Btn>
         </div>
       )}
 
-      {/* HISTORY TAB */}
+      {/* HISTORY */}
       {tab === "history" && (
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {ss.length === 0 ? (
-            <div style={{ textAlign: "center", color: "#6b7280", marginTop: 40 }}>
-              <div style={{ fontSize: 32, marginBottom: 8 }}>📋</div>
-              <div>No hay sesiones aún</div>
+            <div style={{ textAlign: "center", color: T.dim, padding: "50px 0" }}>
+              <div style={{ fontSize: 28, marginBottom: 12 }}>📋</div>
+              <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 20, color: T.text2 }}>Sin sesiones aún</div>
             </div>
           ) : ss.map(s => {
             const maxW = Math.max(...s.sets.map(x => x.weight));
             const vol = s.sets.reduce((a, x) => a + x.weight * x.reps, 0);
             return (
               <Card key={s.id} style={{ padding: "14px 16px" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
-                  <div style={{ fontSize: 13, fontWeight: 700 }}>{fmtDate(s.date, { weekday: "short", day: "numeric", month: "short" })}</div>
-                  <div style={{ fontSize: 12, color: "#6b7280" }}>Vol: {vol.toLocaleString()} kg</div>
+                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 10 }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: T.text }}>{fmtDate(s.date, { weekday: "short", day: "numeric", month: "short" })}</div>
+                  <div style={{ fontSize: 11, color: T.dim }}>{vol.toLocaleString()} kg·rep</div>
                 </div>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
                   {s.sets.map((st, i) => (
                     <span key={i} style={{
-                      borderRadius: 8, padding: "4px 10px", fontSize: 13, fontWeight: 600,
-                      background: st.weight === maxW ? color + "22" : "#21262d",
-                      border: `1px solid ${st.weight === maxW ? color + "55" : "#2a2d35"}`,
-                      color: st.weight === maxW ? color : "#9ca3af",
-                    }}>{st.weight}kg × {st.reps}</span>
+                      borderRadius: 6, padding: "3px 9px", fontSize: 12, fontWeight: 500,
+                      background: st.weight === maxW ? color + "12" : T.bg2,
+                      border: `1px solid ${st.weight === maxW ? color + "30" : T.border}`,
+                      color: st.weight === maxW ? color : T.muted,
+                    }}>{st.weight} × {st.reps}</span>
                   ))}
                 </div>
-                {s.note && <div style={{ marginTop: 8, fontSize: 12, color: "#6b7280", fontStyle: "italic" }}>"{s.note}"</div>}
+                {s.note && <div style={{ marginTop: 8, fontSize: 11, color: T.dim, fontStyle: "italic" }}>"{s.note}"</div>}
               </Card>
             );
           })}
         </div>
       )}
 
-      {/* PROGRESS TAB */}
+      {/* PROGRESS */}
       {tab === "progress" && (
         <div>
-          <div style={{ fontSize: 11, fontWeight: 700, color: "#9ca3af", textTransform: "uppercase", marginBottom: 12, fontFamily: "'Barlow Condensed', sans-serif" }}>Peso máximo por sesión (kg)</div>
+          <div style={{ fontSize: 10, color: T.muted, fontWeight: 600, letterSpacing: ".08em", textTransform: "uppercase", marginBottom: 16 }}>Peso máximo por sesión</div>
           <Sparkline data={progressData} color={color} />
           {progressData.length >= 2 && (
             <>
-              <div style={{ fontSize: 11, fontWeight: 700, color: "#9ca3af", textTransform: "uppercase", margin: "20px 0 12px", fontFamily: "'Barlow Condensed', sans-serif" }}>Últimas sesiones</div>
+              <div style={{ fontSize: 10, color: T.muted, fontWeight: 600, letterSpacing: ".08em", textTransform: "uppercase", margin: "24px 0 14px" }}>Desglose</div>
               {[...progressData].slice(-5).reverse().map((d, i) => (
-                <div key={i} style={{ marginBottom: 12 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4, fontSize: 13 }}>
-                    <span style={{ color: "#9ca3af" }}>{d.date}</span>
-                    <span style={{ fontWeight: 700 }}>{d.max} kg</span>
+                <div key={i} style={{ marginBottom: 14 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 5, fontSize: 12 }}>
+                    <span style={{ color: T.muted }}>{d.date}</span>
+                    <span style={{ fontWeight: 600, color: T.text }}>{d.max} kg</span>
                   </div>
-                  <div style={{ background: "#21262d", borderRadius: 6, height: 8, overflow: "hidden" }}>
-                    <div style={{ width: `${(d.max / globalMax) * 100}%`, height: "100%", background: color, borderRadius: 6 }} />
+                  <div style={{ background: T.bg2, borderRadius: 4, height: 4, overflow: "hidden" }}>
+                    <div style={{ width: `${(d.max / globalMax) * 100}%`, height: "100%", background: color, borderRadius: 4, transition: "width .5s ease" }} />
                   </div>
                 </div>
               ))}
@@ -436,9 +470,12 @@ function TodayScreen({ exercises, sessions, onLogSession }) {
   const ts = sessions.filter(s => new Date(s.date).toDateString() === new Date().toDateString());
   const totalVol = ts.reduce((a, s) => a + s.sets.reduce((b, x) => b + x.weight * x.reps, 0), 0);
   const totalSets = ts.reduce((a, s) => a + s.sets.length, 0);
-  const dateStr = new Date().toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "long" });
+  const now = new Date();
+  const dateStr = now.toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "long" });
+  const dayNum = now.toLocaleDateString("es-ES", { day: "numeric" });
+  const monthStr = now.toLocaleDateString("es-ES", { month: "long" });
 
-  const save = () => {
+  const saveQuick = () => {
     const valid = sets.filter(s => s.weight !== "" && s.reps !== "");
     if (!sel || !valid.length) return;
     onLogSession({ exerciseId: sel, date: new Date().toISOString(), sets: valid.map(s => ({ weight: parseFloat(s.weight), reps: parseInt(s.reps) })) });
@@ -447,25 +484,37 @@ function TodayScreen({ exercises, sessions, onLogSession }) {
   };
 
   return (
-    <div style={{ padding: "0 16px 100px" }}>
-      <div style={{ padding: "20px 0 16px" }}>
-        <div style={{ fontSize: 13, color: "#6b7280", textTransform: "capitalize" }}>{dateStr}</div>
-        <div style={{ fontSize: 22, fontWeight: 800, fontFamily: "'Barlow Condensed', sans-serif" }}>Sesión de Hoy</div>
+    <div style={{ padding: "0 20px 100px", background: T.bg, minHeight: "100vh" }}>
+      {/* Header */}
+      <div style={{ padding: "28px 0 20px", borderBottom: `1px solid ${T.border}`, marginBottom: 20 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end" }}>
+          <div>
+            <div style={{ fontSize: 11, color: T.dim, fontWeight: 600, letterSpacing: ".1em", textTransform: "uppercase", marginBottom: 4, textTransform: "capitalize" }}>{dateStr}</div>
+            <div style={{ fontSize: 30, fontWeight: 300, fontFamily: "'Cormorant Garamond', serif", letterSpacing: "-.03em", color: T.text, lineHeight: 1 }}>Sesión de hoy</div>
+          </div>
+          <div style={{ textAlign: "right" }}>
+            <div style={{ fontSize: 36, fontWeight: 300, fontFamily: "'Cormorant Garamond', serif", color: T.border2, lineHeight: 1 }}>{dayNum}</div>
+            <div style={{ fontSize: 10, color: T.dim, textTransform: "capitalize", letterSpacing: ".04em" }}>{monthStr}</div>
+          </div>
+        </div>
       </div>
 
-      <div style={{ display: "flex", gap: 10, marginBottom: 20 }}>
+      {/* Stats */}
+      <div style={{ display: "flex", gap: 8, marginBottom: 22 }}>
         <StatCard emoji="💪" value={totalVol ? `${totalVol.toLocaleString()} kg` : "—"} label="Volumen" />
         <StatCard emoji="🔁" value={totalSets || "—"} label="Series" />
         <StatCard emoji="📋" value={ts.length || "—"} label="Ejercicios" />
       </div>
 
-      <Card style={{ marginBottom: 16, border: "1px solid #c8f74a33" }}>
-        <div style={{ fontSize: 13, fontWeight: 700, color: "#c8f74a", textTransform: "uppercase", marginBottom: 12, fontFamily: "'Barlow Condensed', sans-serif" }}>Registro rápido</div>
-        <div style={{ marginBottom: 12 }}>
-          <label style={{ fontSize: 11, color: "#6b7280", fontWeight: 700, textTransform: "uppercase", letterSpacing: ".06em", display: "block", marginBottom: 4 }}>Ejercicio</label>
+      {/* Quick log */}
+      <Card style={{ marginBottom: 20 }}>
+        <div style={{ fontSize: 10, color: T.muted, fontWeight: 600, letterSpacing: ".1em", textTransform: "uppercase", marginBottom: 14 }}>Registro rápido</div>
+
+        <div style={{ marginBottom: 14 }}>
+          <label style={{ fontSize: 10, color: T.muted, fontWeight: 600, textTransform: "uppercase", letterSpacing: ".08em", display: "block", marginBottom: 6 }}>Ejercicio</label>
           <select value={sel} onChange={e => setSel(e.target.value)} style={{
-            width: "100%", background: "#161b22", border: "1px solid #2a2d35",
-            borderRadius: 10, color: sel ? "#f0f6fc" : "#6b7280", padding: "10px 14px", fontSize: 14,
+            width: "100%", background: T.surface2, border: `1px solid ${T.border}`,
+            borderRadius: 8, color: sel ? T.text : T.dim, padding: "10px 13px", fontSize: 14,
           }}>
             <option value="">Selecciona un ejercicio...</option>
             {exercises.map(ex => <option key={ex.id} value={ex.id}>{ex.name}</option>)}
@@ -473,35 +522,38 @@ function TodayScreen({ exercises, sessions, onLogSession }) {
         </div>
 
         {sets.map((s, i) => (
-          <div key={i} style={{ display: "flex", gap: 10, marginBottom: 8, alignItems: "flex-end" }}>
-            <div style={{ width: 28, height: 28, borderRadius: 8, background: "#c8f74a22", color: "#c8f74a", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 800, flexShrink: 0, marginBottom: 2, fontFamily: "'Barlow Condensed', sans-serif" }}>{i + 1}</div>
+          <div key={i} style={{ display: "flex", gap: 10, marginBottom: 10, alignItems: "flex-end" }}>
+            <div style={{ width: 26, height: 26, borderRadius: 7, background: T.bg2, border: `1px solid ${T.border}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, color: T.muted, flexShrink: 0, marginBottom: 2 }}>{i + 1}</div>
             <div style={{ flex: 1 }}><Field label="Kg" type="number" min="0" step="0.5" value={s.weight} onChange={v => setSets(sets.map((x, j) => j === i ? { ...x, weight: v } : x))} placeholder="0" /></div>
             <div style={{ flex: 1 }}><Field label="Reps" type="number" min="0" step="1" value={s.reps} onChange={v => setSets(sets.map((x, j) => j === i ? { ...x, reps: v } : x))} placeholder="0" /></div>
           </div>
         ))}
 
-        <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+        <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
           <Btn onClick={() => setSets([...sets, { weight: "", reps: "" }])} variant="ghost" small>+ Serie</Btn>
-          <Btn onClick={save} small disabled={!sel || !sets.some(s => s.weight && s.reps)}>
+          <Btn onClick={saveQuick} small disabled={!sel || !sets.some(s => s.weight && s.reps)}>
             <Icon d={Icons.check} size={14} /> Guardar
           </Btn>
         </div>
       </Card>
 
+      {/* Done today */}
       {ts.length > 0 && (
         <>
-          <div style={{ fontSize: 11, fontWeight: 700, color: "#9ca3af", textTransform: "uppercase", marginBottom: 10, fontFamily: "'Barlow Condensed', sans-serif" }}>Completado hoy</div>
+          <div style={{ fontSize: 10, color: T.muted, fontWeight: 600, letterSpacing: ".1em", textTransform: "uppercase", marginBottom: 12 }}>Completado hoy</div>
           {ts.map(s => {
             const ex = exercises.find(e => e.id === s.exerciseId);
-            const color = MUSCLE_COLORS[ex?.group] || "#c8f74a";
+            const color = MUSCLE_COLORS[ex?.group] || T.text;
             return (
-              <Card key={s.id} style={{ marginBottom: 10, padding: "12px 16px" }}>
+              <Card key={s.id} style={{ marginBottom: 8, padding: "12px 16px" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                   <div>
-                    <div style={{ fontWeight: 700, marginBottom: 4 }}>{ex?.name || "Ejercicio"}</div>
-                    <div style={{ display: "flex", gap: 6 }}>{s.sets.map((st, i) => <span key={i} style={{ fontSize: 12, color: "#9ca3af" }}>{st.weight}×{st.reps}</span>)}</div>
+                    <div style={{ fontWeight: 600, fontSize: 13, color: T.text, marginBottom: 5 }}>{ex?.name || "Ejercicio"}</div>
+                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                      {s.sets.map((st, i) => <span key={i} style={{ fontSize: 11, color: T.muted }}>{st.weight}×{st.reps}</span>)}
+                    </div>
                   </div>
-                  <div style={{ width: 10, height: 10, borderRadius: "50%", background: color }} />
+                  <div style={{ width: 8, height: 8, borderRadius: "50%", background: color, flexShrink: 0 }} />
                 </div>
               </Card>
             );
@@ -512,7 +564,7 @@ function TodayScreen({ exercises, sessions, onLogSession }) {
   );
 }
 
-// ── App root ─────────────────────────────────────────────────────────────────
+// ── App root ──────────────────────────────────────────────────────────────────
 export default function App() {
   const [exercises, setExercises] = useState(() => load("gym_exercises", []));
   const [sessions, setSessions]   = useState(() => load("gym_sessions", []));
@@ -523,16 +575,9 @@ export default function App() {
   useEffect(() => save("gym_exercises", exercises), [exercises]);
   useEffect(() => save("gym_sessions", sessions), [sessions]);
 
-  const addExercise = data => {
-    setExercises(prev => [...prev, { ...data, id: uid() }]);
-    setScreen("main"); setNavTab("exercises");
-  };
-  const deleteExercise = id => {
-    setExercises(prev => prev.filter(e => e.id !== id));
-    setSessions(prev => prev.filter(s => s.exerciseId !== id));
-    setScreen("main"); setNavTab("exercises");
-  };
-  const logSession = data => setSessions(prev => [...prev, { ...data, id: uid() }]);
+  const addExercise = data => { setExercises(p => [...p, { ...data, id: uid() }]); setScreen("main"); setNavTab("exercises"); };
+  const deleteExercise = id => { setExercises(p => p.filter(e => e.id !== id)); setSessions(p => p.filter(s => s.exerciseId !== id)); setScreen("main"); setNavTab("exercises"); };
+  const logSession = data => setSessions(p => [...p, { ...data, id: uid() }]);
 
   const NAV = [
     { id: "today", label: "Hoy", icon: Icons.flame },
@@ -540,15 +585,12 @@ export default function App() {
   ];
 
   return (
-    <div style={{ background: "#0d1117", minHeight: "100vh", maxWidth: 430, margin: "0 auto", position: "relative" }}>
+    <div style={{ background: T.bg, minHeight: "100vh", maxWidth: 430, margin: "0 auto" }}>
       {screen === "add" && <AddExerciseScreen onSave={addExercise} onBack={() => setScreen("main")} />}
       {screen === "detail" && selected && (
-        <ExerciseScreen
-          exercise={selected} sessions={sessions}
-          onLogSession={logSession}
+        <ExerciseScreen exercise={selected} sessions={sessions} onLogSession={logSession}
           onDelete={() => deleteExercise(selected.id)}
-          onBack={() => { setScreen("main"); setNavTab("exercises"); }}
-        />
+          onBack={() => { setScreen("main"); setNavTab("exercises"); }} />
       )}
       {screen === "main" && (
         <>
@@ -556,23 +598,24 @@ export default function App() {
           {navTab === "exercises" && (
             <HomeScreen exercises={exercises} sessions={sessions}
               onSelect={ex => { setSelected(ex); setScreen("detail"); }}
-              onAdd={() => setScreen("add")}
-            />
+              onAdd={() => setScreen("add")} />
           )}
           <nav style={{
             position: "fixed", bottom: 0, left: "50%", transform: "translateX(-50%)",
-            width: "100%", maxWidth: 430, background: "#0d1117",
-            borderTop: "1px solid #21262d", display: "flex", padding: "8px 0 20px",
+            width: "100%", maxWidth: 430,
+            background: "rgba(247,245,242,0.92)", backdropFilter: "blur(12px)",
+            borderTop: `1px solid ${T.border}`,
+            display: "flex", padding: "10px 0 22px",
           }}>
             {NAV.map(t => (
               <button key={t.id} onClick={() => setNavTab(t.id)} style={{
                 flex: 1, background: "none", border: "none", cursor: "pointer",
                 display: "flex", flexDirection: "column", alignItems: "center", gap: 4,
-                color: navTab === t.id ? "#c8f74a" : "#6b7280",
-                fontSize: 10, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase",
+                color: navTab === t.id ? T.text : T.dim,
+                fontSize: 9, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase",
                 transition: "color .2s",
               }}>
-                <Icon d={t.icon} size={22} />
+                <Icon d={t.icon} size={20} />
                 {t.label}
               </button>
             ))}

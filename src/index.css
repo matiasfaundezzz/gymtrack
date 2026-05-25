@@ -1,5 +1,33 @@
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500;600&family=DM+Sans:wght@300;400;500;600;700&display=swap');
+
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-body { background: #0d1117; color: #f0f6fc; font-family: 'Barlow', sans-serif; overscroll-behavior: none; }
+
+:root {
+  --bg: #f7f5f2;
+  --bg2: #f0ede8;
+  --surface: #ffffff;
+  --surface2: #faf9f7;
+  --border: #e8e3dc;
+  --border2: #d9d2c8;
+  --text: #1a1714;
+  --text2: #4a4540;
+  --muted: #8a837a;
+  --dim: #b5afa8;
+  --accent: #1a1714;
+  --accent-light: #f0ede8;
+  --shadow: 0 1px 3px rgba(26,23,20,0.06), 0 4px 16px rgba(26,23,20,0.04);
+  --shadow-md: 0 2px 8px rgba(26,23,20,0.08), 0 8px 32px rgba(26,23,20,0.06);
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'DM Sans', sans-serif;
+  overscroll-behavior: none;
+  min-height: 100vh;
+}
+
 input, select, button { font-family: inherit; }
 ::-webkit-scrollbar { display: none; }
-@import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800;900&family=Barlow:wght@400;500;600;700&display=swap');
+
+input:focus, select:focus { outline: 1.5px solid var(--accent); outline-offset: 1px; }
