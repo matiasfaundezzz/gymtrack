@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef } from "react";
+import { supabase } from "./supabase";
 
-const load = (key, fallback) => { try { return JSON.parse(localStorage.getItem(key)) ?? fallback; } catch { return fallback; } };
-const save = (key, val) => localStorage.setItem(key, JSON.stringify(val));
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2);
 const fmtDate = (iso, opts) => new Date(iso).toLocaleDateString("es-ES", opts);
 
@@ -39,6 +38,7 @@ const Icons = {
   play:"M5 3l14 9-14 9V3z",
   pause:"M6 4h4v16H6zM14 4h4v16h-4z",
   reset:"M1 4v6h6M23 20v-6h-6M20.49 9A9 9 0 005.64 5.64L1 10M23 14l-4.64 4.36A9 9 0 013.51 15",
+  loader:"M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83",
 };
 
 // ── UI Components ─────────────────────────────────────────────────────────────
@@ -93,6 +93,15 @@ const StatCard = ({ emoji, value, label }) => (
   </Card>
 );
 
+const Spinner = () => (
+  <div style={{ display:"flex", justifyContent:"center", alignItems:"center", padding:"60px 0" }}>
+    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={T.dim} strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" style={{ animation:"spin 1s linear infinite" }}>
+      <path d={Icons.loader}/>
+    </svg>
+    <style>{`@keyframes spin { from { transform: rotate(0deg) } to { transform: rotate(360deg) } }`}</style>
+  </div>
+);
+
 // ── Rest Timer ────────────────────────────────────────────────────────────────
 function RestTimer() {
   const [duration, setDuration] = useState(90);
@@ -113,11 +122,7 @@ function RestTimer() {
     return () => clearInterval(intervalRef.current);
   }, [running, remaining]);
 
-  const start = (dur) => {
-    setDuration(dur);
-    setRemaining(dur);
-    setRunning(true);
-  };
+  const start = (dur) => { setDuration(dur); setRemaining(dur); setRunning(true); };
   const toggle = () => setRunning(r => !r);
   const reset = () => { clearInterval(intervalRef.current); setRunning(false); setRemaining(null); };
 
@@ -126,35 +131,23 @@ function RestTimer() {
   const pct = idle ? 100 : (remaining / duration) * 100;
   const mins = idle ? Math.floor(duration / 60) : Math.floor(remaining / 60);
   const secs = idle ? duration % 60 : remaining % 60;
-
-  // SVG circle
   const R = 40, C = 2 * Math.PI * R;
   const strokeColor = finished ? "#10b981" : running ? T.text : T.muted;
 
   return (
     <Card style={{ marginBottom:20 }}>
-      <div style={{ fontSize:10, color:T.muted, fontWeight:600, letterSpacing:".1em", textTransform:"uppercase", marginBottom:14 }}>
-        Descanso entre series
-      </div>
-
+      <div style={{ fontSize:10, color:T.muted, fontWeight:600, letterSpacing:".1em", textTransform:"uppercase", marginBottom:14 }}>Descanso entre series</div>
       <div style={{ display:"flex", alignItems:"center", gap:20 }}>
-        {/* Circle */}
         <div style={{ position:"relative", width:96, height:96, flexShrink:0 }}>
           <svg width="96" height="96" viewBox="0 0 96 96">
             <circle cx="48" cy="48" r={R} fill="none" stroke={T.bg2} strokeWidth="5"/>
-            <circle cx="48" cy="48" r={R} fill="none"
-              stroke={strokeColor}
-              strokeWidth="5"
-              strokeDasharray={`${(pct/100)*C} ${C}`}
-              strokeDashoffset={C*0.25}
-              strokeLinecap="round"
+            <circle cx="48" cy="48" r={R} fill="none" stroke={strokeColor} strokeWidth="5"
+              strokeDasharray={`${(pct/100)*C} ${C}`} strokeDashoffset={C*0.25} strokeLinecap="round"
               style={{ transition:"stroke-dasharray 1s linear, stroke .3s" }}
             />
           </svg>
           <div style={{ position:"absolute", inset:0, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center" }}>
-            {finished ? (
-              <div style={{ fontSize:26, color:"#10b981" }}>✓</div>
-            ) : (
+            {finished ? <div style={{ fontSize:26, color:"#10b981" }}>✓</div> : (
               <>
                 <div style={{ fontSize:20, fontWeight:300, fontFamily:"'Cormorant Garamond', serif", color:T.text, lineHeight:1 }}>
                   {String(mins).padStart(2,"0")}:{String(secs).padStart(2,"0")}
@@ -166,46 +159,27 @@ function RestTimer() {
             )}
           </div>
         </div>
-
-        {/* Right side */}
         <div style={{ flex:1 }}>
-          {/* Presets */}
           <div style={{ display:"flex", gap:5, marginBottom:12, flexWrap:"wrap" }}>
             {REST_PRESETS.map(s => (
               <button key={s} onClick={() => start(s)} style={{
                 padding:"5px 10px", borderRadius:7, fontSize:11, fontWeight:600, cursor:"pointer",
-                background: !idle && duration===s ? T.text : T.bg2,
-                color: !idle && duration===s ? "#fff" : T.muted,
+                background:!idle&&duration===s?T.text:T.bg2, color:!idle&&duration===s?"#fff":T.muted,
                 border:`1px solid ${T.border}`, transition:"all .15s",
               }}>{s<60?`${s}s`:`${s/60}m`}</button>
             ))}
           </div>
-
-          {/* Controls */}
           <div style={{ display:"flex", gap:6 }}>
             {idle ? (
-              <button onClick={() => start(duration)} style={{
-                flex:1, padding:"8px", borderRadius:8, border:"none",
-                background:T.text, color:"#fff", fontSize:12, fontWeight:600, cursor:"pointer",
-                display:"flex", alignItems:"center", justifyContent:"center", gap:5,
-              }}>
+              <button onClick={() => start(duration)} style={{ flex:1, padding:"8px", borderRadius:8, border:"none", background:T.text, color:"#fff", fontSize:12, fontWeight:600, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", gap:5 }}>
                 <Icon d={Icons.play} size={13}/> Iniciar
               </button>
             ) : (
               <>
-                <button onClick={toggle} style={{
-                  flex:1, padding:"8px", borderRadius:8, border:`1px solid ${T.border}`,
-                  background:T.surface2, color:T.text, fontSize:12, fontWeight:600, cursor:"pointer",
-                  display:"flex", alignItems:"center", justifyContent:"center", gap:5,
-                }}>
-                  <Icon d={running?Icons.pause:Icons.play} size={13}/>
-                  {running?"Pausar":"Reanudar"}
+                <button onClick={toggle} style={{ flex:1, padding:"8px", borderRadius:8, border:`1px solid ${T.border}`, background:T.surface2, color:T.text, fontSize:12, fontWeight:600, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", gap:5 }}>
+                  <Icon d={running?Icons.pause:Icons.play} size={13}/>{running?"Pausar":"Reanudar"}
                 </button>
-                <button onClick={reset} style={{
-                  padding:"8px 11px", borderRadius:8, border:`1px solid ${T.border}`,
-                  background:"transparent", color:T.dim, cursor:"pointer",
-                  display:"flex", alignItems:"center", justifyContent:"center",
-                }}>
+                <button onClick={reset} style={{ padding:"8px 11px", borderRadius:8, border:`1px solid ${T.border}`, background:"transparent", color:T.dim, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>
                   <Icon d={Icons.reset} size={13}/>
                 </button>
               </>
@@ -213,12 +187,7 @@ function RestTimer() {
           </div>
         </div>
       </div>
-
-      {finished && (
-        <div style={{ marginTop:12, textAlign:"center", fontSize:12, color:"#10b981", fontWeight:600, letterSpacing:".02em" }}>
-          ¡Tiempo! Listo para la siguiente serie 💪
-        </div>
-      )}
+      {finished && <div style={{ marginTop:12, textAlign:"center", fontSize:12, color:"#10b981", fontWeight:600 }}>¡Tiempo! Listo para la siguiente serie 💪</div>}
     </Card>
   );
 }
@@ -260,13 +229,13 @@ function Sparkline({ data, color }) {
 }
 
 // ── HomeScreen ────────────────────────────────────────────────────────────────
-function HomeScreen({ exercises, sessions, onSelect, onAdd }) {
+function HomeScreen({ exercises, sessions, onSelect, onAdd, loading }) {
   const [filter, setFilter] = useState("Todos");
   const groups = ["Todos",...MUSCLE_GROUPS];
-  const filtered = filter==="Todos" ? exercises : exercises.filter(e=>e.group===filter);
+  const filtered = filter==="Todos" ? exercises : exercises.filter(e=>e.group_name===filter);
 
-  const getBest = id => { const ss=sessions.filter(s=>s.exerciseId===id); if(!ss.length)return null; return ss.reduce((b,s)=>Math.max(b,...s.sets.map(x=>x.weight)),0); };
-  const getStreak = id => { const w={}; sessions.filter(s=>s.exerciseId===id).forEach(s=>{w[Math.floor(new Date(s.date)/(7*86400000))]=1;}); return Object.keys(w).length; };
+  const getBest = id => { const ss=sessions.filter(s=>s.exercise_id===id); if(!ss.length)return null; return ss.reduce((b,s)=>Math.max(b,...s.sets.map(x=>x.weight)),0); };
+  const getStreak = id => { const w={}; sessions.filter(s=>s.exercise_id===id).forEach(s=>{w[Math.floor(new Date(s.date)/(7*86400000))]=1;}); return Object.keys(w).length; };
 
   return (
     <div style={{ padding:"0 20px 100px", background:T.bg, minHeight:"100vh" }}>
@@ -284,13 +253,12 @@ function HomeScreen({ exercises, sessions, onSelect, onAdd }) {
       </div>
 
       <div style={{ display:"flex", gap:6, overflowX:"auto", paddingBottom:16, scrollbarWidth:"none" }}>
-        {groups.map(g=>{
-          const color=MUSCLE_COLORS[g]||T.text, active=filter===g;
+        {groups.map(g=>{ const color=MUSCLE_COLORS[g]||T.text, active=filter===g;
           return <button key={g} onClick={()=>setFilter(g)} style={{ whiteSpace:"nowrap", padding:"5px 13px", borderRadius:20, border:active?`1.5px solid ${color}`:`1px solid ${T.border}`, background:active?color+"12":T.surface, color:active?color:T.muted, fontSize:12, fontWeight:600, cursor:"pointer", boxShadow:active?"none":T.shadow, transition:"all .2s" }}>{g}</button>;
         })}
       </div>
 
-      {filtered.length===0 ? (
+      {loading ? <Spinner/> : filtered.length===0 ? (
         <div style={{ textAlign:"center", color:T.dim, marginTop:80, padding:"0 20px" }}>
           <div style={{ fontSize:36, marginBottom:16 }}>🏋️</div>
           <div style={{ fontFamily:"'Cormorant Garamond', serif", fontSize:22, fontWeight:400, color:T.text2, marginBottom:8 }}>Sin ejercicios aún</div>
@@ -299,14 +267,14 @@ function HomeScreen({ exercises, sessions, onSelect, onAdd }) {
       ) : (
         <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
           {filtered.map(ex=>{
-            const best=getBest(ex.id), streak=getStreak(ex.id), count=sessions.filter(s=>s.exerciseId===ex.id).length, color=MUSCLE_COLORS[ex.group]||T.text;
+            const best=getBest(ex.id), streak=getStreak(ex.id), count=sessions.filter(s=>s.exercise_id===ex.id).length, color=MUSCLE_COLORS[ex.group_name]||T.text;
             return (
               <Card key={ex.id} onClick={()=>onSelect(ex)} style={{ padding:"14px 16px" }}>
                 <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
                   <div style={{ flex:1 }}>
                     <div style={{ fontSize:15, fontWeight:600, color:T.text, marginBottom:6, letterSpacing:"-.01em" }}>{ex.name}</div>
                     <div style={{ display:"flex", gap:5 }}>
-                      <Tag label={ex.group} color={color}/>
+                      <Tag label={ex.group_name} color={color}/>
                       {streak>0&&<Tag label={`${streak} sem`} color={T.muted}/>}
                     </div>
                   </div>
@@ -314,7 +282,7 @@ function HomeScreen({ exercises, sessions, onSelect, onAdd }) {
                     {best!==null ? (
                       <>
                         <div style={{ fontSize:22, fontWeight:300, color:T.text, fontFamily:"'Cormorant Garamond', serif", letterSpacing:"-.02em", lineHeight:1 }}>{best}<span style={{ fontSize:12, color:T.dim }}> kg</span></div>
-                        <div style={{ fontSize:10, color:T.dim, marginTop:3, letterSpacing:".04em" }}>{count} sesiones</div>
+                        <div style={{ fontSize:10, color:T.dim, marginTop:3 }}>{count} sesiones</div>
                       </>
                     ) : <div style={{ fontSize:11, color:T.dim }}>Sin datos</div>}
                   </div>
@@ -333,6 +301,15 @@ function AddExerciseScreen({ onSave, onBack }) {
   const [name, setName] = useState("");
   const [group, setGroup] = useState("Pecho");
   const [notes, setNotes] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const handleSave = async () => {
+    if (!name.trim()) return;
+    setSaving(true);
+    await onSave({ name: name.trim(), group_name: group, notes });
+    setSaving(false);
+  };
+
   return (
     <div style={{ padding:"0 20px 100px", background:T.bg, minHeight:"100vh" }}>
       <div style={{ display:"flex", alignItems:"center", gap:14, padding:"28px 0 24px", borderBottom:`1px solid ${T.border}`, marginBottom:24 }}>
@@ -347,12 +324,14 @@ function AddExerciseScreen({ onSave, onBack }) {
         <div>
           <div style={{ fontSize:10, color:T.muted, fontWeight:600, letterSpacing:".08em", textTransform:"uppercase", marginBottom:10 }}>Grupo muscular</div>
           <div style={{ display:"flex", flexWrap:"wrap", gap:7 }}>
-            {MUSCLE_GROUPS.map(g=>{ const color=MUSCLE_COLORS[g], sel=group===g; return <button key={g} onClick={()=>setGroup(g)} style={{ padding:"7px 13px", borderRadius:8, fontSize:12, fontWeight:600, cursor:"pointer", background:sel?color+"15":T.surface, color:sel?color:T.muted, border:sel?`1.5px solid ${color}40`:`1px solid ${T.border}`, boxShadow:sel?"none":T.shadow, transition:"all .15s" }}>{g}</button>; })}
+            {MUSCLE_GROUPS.map(g=>{ const color=MUSCLE_COLORS[g], sel=group===g;
+              return <button key={g} onClick={()=>setGroup(g)} style={{ padding:"7px 13px", borderRadius:8, fontSize:12, fontWeight:600, cursor:"pointer", background:sel?color+"15":T.surface, color:sel?color:T.muted, border:sel?`1.5px solid ${color}40`:`1px solid ${T.border}`, transition:"all .15s" }}>{g}</button>;
+            })}
           </div>
         </div>
         <Field label="Notas (opcional)" value={notes} onChange={setNotes} placeholder="Forma, agarre, observaciones..."/>
-        <Btn onClick={()=>{ if(name.trim()) onSave({name:name.trim(),group,notes}); }} full disabled={!name.trim()}>
-          <Icon d={Icons.check} size={16}/> Guardar ejercicio
+        <Btn onClick={handleSave} full disabled={!name.trim()||saving}>
+          {saving ? "Guardando..." : <><Icon d={Icons.check} size={16}/> Guardar ejercicio</>}
         </Btn>
       </div>
     </div>
@@ -364,18 +343,21 @@ function ExerciseScreen({ exercise, sessions, onLogSession, onDelete, onBack }) 
   const [tab, setTab] = useState("log");
   const [sets, setSets] = useState([{weight:"",reps:""}]);
   const [note, setNote] = useState("");
+  const [saving, setSaving] = useState(false);
 
-  const ss = sessions.filter(s=>s.exerciseId===exercise.id).sort((a,b)=>new Date(b.date)-new Date(a.date));
+  const ss = sessions.filter(s=>s.exercise_id===exercise.id).sort((a,b)=>new Date(b.date)-new Date(a.date));
   const lastSess = ss[0];
   const allW = ss.flatMap(s=>s.sets.map(x=>x.weight));
   const globalMax = allW.length ? Math.max(...allW) : 0;
-  const color = MUSCLE_COLORS[exercise.group]||T.text;
+  const color = MUSCLE_COLORS[exercise.group_name]||T.text;
 
-  const saveSession = () => {
+  const saveSession = async () => {
     const valid=sets.filter(s=>s.weight!==""&&s.reps!=="");
     if(!valid.length) return;
-    onLogSession({ exerciseId:exercise.id, date:new Date().toISOString(), sets:valid.map(s=>({weight:parseFloat(s.weight),reps:parseInt(s.reps)})), note });
+    setSaving(true);
+    await onLogSession({ exercise_id:exercise.id, date:new Date().toISOString(), sets:valid.map(s=>({weight:parseFloat(s.weight),reps:parseInt(s.reps)})), note });
     setSets([{weight:"",reps:""}]); setNote(""); setTab("history");
+    setSaving(false);
   };
 
   const progressData=[...ss].reverse().map(s=>({ date:fmtDate(s.date,{day:"2-digit",month:"2-digit"}), max:Math.max(...s.sets.map(x=>x.weight)) }));
@@ -389,7 +371,7 @@ function ExerciseScreen({ exercise, sessions, onLogSession, onDelete, onBack }) 
           <button onClick={onDelete} style={{ background:"none", border:"none", color:T.dim, cursor:"pointer", padding:2, display:"flex" }}><Icon d={Icons.trash} size={16}/></button>
         </div>
         <div style={{ fontSize:28, fontWeight:300, fontFamily:"'Cormorant Garamond', serif", letterSpacing:"-.03em", color:T.text, lineHeight:1.1, marginBottom:8 }}>{exercise.name}</div>
-        <Tag label={exercise.group} color={color}/>
+        <Tag label={exercise.group_name} color={color}/>
         {exercise.notes&&<div style={{ marginTop:10, fontSize:12, color:T.muted, fontStyle:"italic", lineHeight:1.5 }}>{exercise.notes}</div>}
       </div>
 
@@ -401,13 +383,12 @@ function ExerciseScreen({ exercise, sessions, onLogSession, onDelete, onBack }) 
         </div>
       )}
 
-      <div style={{ display:"flex", borderBottom:`1px solid ${T.border}`, marginBottom:20, gap:0 }}>
+      <div style={{ display:"flex", borderBottom:`1px solid ${T.border}`, marginBottom:20 }}>
         {TABS.map(([t,label])=>(
           <button key={t} onClick={()=>setTab(t)} style={{ flex:1, padding:"10px 0", border:"none", background:"transparent", fontSize:12, fontWeight:600, letterSpacing:".04em", cursor:"pointer", color:tab===t?T.text:T.dim, borderBottom:tab===t?`2px solid ${T.text}`:"2px solid transparent", marginBottom:"-1px", transition:"all .2s" }}>{label}</button>
         ))}
       </div>
 
-      {/* LOG TAB */}
       {tab==="log"&&(
         <div style={{ display:"flex", flexDirection:"column", gap:14 }}>
           {lastSess&&(
@@ -422,7 +403,6 @@ function ExerciseScreen({ exercise, sessions, onLogSession, onDelete, onBack }) 
             </div>
           )}
 
-          {/* REST TIMER */}
           <RestTimer/>
 
           <div style={{ fontSize:10, color:T.muted, fontWeight:600, letterSpacing:".08em", textTransform:"uppercase" }}>Series de hoy</div>
@@ -436,13 +416,12 @@ function ExerciseScreen({ exercise, sessions, onLogSession, onDelete, onBack }) 
           ))}
           <Btn onClick={()=>setSets([...sets,{weight:"",reps:""}])} variant="ghost" full small>+ Agregar serie</Btn>
           <Field label="Nota (opcional)" value={note} onChange={setNote} placeholder="Cómo te sentiste hoy..."/>
-          <Btn onClick={saveSession} full disabled={!sets.some(s=>s.weight!==""&&s.reps!=="")}>
-            <Icon d={Icons.check} size={16}/> Guardar sesión
+          <Btn onClick={saveSession} full disabled={!sets.some(s=>s.weight!==""&&s.reps!==(""))||saving}>
+            {saving?"Guardando...":<><Icon d={Icons.check} size={16}/> Guardar sesión</>}
           </Btn>
         </div>
       )}
 
-      {/* HISTORY TAB */}
       {tab==="history"&&(
         <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
           {ss.length===0 ? (
@@ -470,7 +449,6 @@ function ExerciseScreen({ exercise, sessions, onLogSession, onDelete, onBack }) 
         </div>
       )}
 
-      {/* PROGRESS TAB */}
       {tab==="progress"&&(
         <div>
           <div style={{ fontSize:10, color:T.muted, fontWeight:600, letterSpacing:".08em", textTransform:"uppercase", marginBottom:16 }}>Peso máximo por sesión</div>
@@ -501,6 +479,7 @@ function ExerciseScreen({ exercise, sessions, onLogSession, onDelete, onBack }) 
 function TodayScreen({ exercises, sessions, onLogSession }) {
   const [sel, setSel] = useState("");
   const [sets, setSets] = useState([{weight:"",reps:""}]);
+  const [saving, setSaving] = useState(false);
 
   const ts=sessions.filter(s=>new Date(s.date).toDateString()===new Date().toDateString());
   const totalVol=ts.reduce((a,s)=>a+s.sets.reduce((b,x)=>b+x.weight*x.reps,0),0);
@@ -510,11 +489,13 @@ function TodayScreen({ exercises, sessions, onLogSession }) {
   const dayNum=now.toLocaleDateString("es-ES",{day:"numeric"});
   const monthStr=now.toLocaleDateString("es-ES",{month:"long"});
 
-  const saveQuick=()=>{
+  const saveQuick = async () => {
     const valid=sets.filter(s=>s.weight!==""&&s.reps!=="");
     if(!sel||!valid.length) return;
-    onLogSession({ exerciseId:sel, date:new Date().toISOString(), sets:valid.map(s=>({weight:parseFloat(s.weight),reps:parseInt(s.reps)})) });
+    setSaving(true);
+    await onLogSession({ exercise_id:sel, date:new Date().toISOString(), sets:valid.map(s=>({weight:parseFloat(s.weight),reps:parseInt(s.reps)})) });
     setSets([{weight:"",reps:""}]); setSel("");
+    setSaving(false);
   };
 
   return (
@@ -556,8 +537,8 @@ function TodayScreen({ exercises, sessions, onLogSession }) {
         ))}
         <div style={{ display:"flex", gap:8, marginTop:4 }}>
           <Btn onClick={()=>setSets([...sets,{weight:"",reps:""}])} variant="ghost" small>+ Serie</Btn>
-          <Btn onClick={saveQuick} small disabled={!sel||!sets.some(s=>s.weight&&s.reps)}>
-            <Icon d={Icons.check} size={14}/> Guardar
+          <Btn onClick={saveQuick} small disabled={!sel||!sets.some(s=>s.weight&&s.reps)||saving}>
+            {saving?"...":<><Icon d={Icons.check} size={14}/> Guardar</>}
           </Btn>
         </div>
       </Card>
@@ -566,7 +547,7 @@ function TodayScreen({ exercises, sessions, onLogSession }) {
         <>
           <div style={{ fontSize:10, color:T.muted, fontWeight:600, letterSpacing:".1em", textTransform:"uppercase", marginBottom:12 }}>Completado hoy</div>
           {ts.map(s=>{
-            const ex=exercises.find(e=>e.id===s.exerciseId), color=MUSCLE_COLORS[ex?.group]||T.text;
+            const ex=exercises.find(e=>e.id===s.exercise_id), color=MUSCLE_COLORS[ex?.group_name]||T.text;
             return (
               <Card key={s.id} style={{ marginBottom:8, padding:"12px 16px" }}>
                 <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
@@ -587,18 +568,46 @@ function TodayScreen({ exercises, sessions, onLogSession }) {
 
 // ── App root ──────────────────────────────────────────────────────────────────
 export default function App() {
-  const [exercises, setExercises] = useState(()=>load("gym_exercises",[]));
-  const [sessions, setSessions]   = useState(()=>load("gym_sessions",[]));
+  const [exercises, setExercises] = useState([]);
+  const [sessions, setSessions]   = useState([]);
+  const [loading, setLoading]     = useState(true);
   const [screen, setScreen]       = useState("main");
   const [navTab, setNavTab]       = useState("today");
   const [selected, setSelected]   = useState(null);
 
-  useEffect(()=>save("gym_exercises",exercises),[exercises]);
-  useEffect(()=>save("gym_sessions",sessions),[sessions]);
+  // ── Load data from Supabase ──
+  useEffect(() => {
+    const fetchData = async () => {
+      setLoading(true);
+      const [{ data: exData }, { data: sessData }] = await Promise.all([
+        supabase.from("exercises").select("*").order("created_at", { ascending: true }),
+        supabase.from("sessions").select("*").order("date", { ascending: false }),
+      ]);
+      if (exData)   setExercises(exData);
+      if (sessData) setSessions(sessData);
+      setLoading(false);
+    };
+    fetchData();
+  }, []);
 
-  const addExercise = data=>{ setExercises(p=>[...p,{...data,id:uid()}]); setScreen("main"); setNavTab("exercises"); };
-  const deleteExercise = id=>{ setExercises(p=>p.filter(e=>e.id!==id)); setSessions(p=>p.filter(s=>s.exerciseId!==id)); setScreen("main"); setNavTab("exercises"); };
-  const logSession = data=>setSessions(p=>[...p,{...data,id:uid()}]);
+  // ── CRUD ──
+  const addExercise = async (data) => {
+    const { data: newEx } = await supabase.from("exercises").insert(data).select().single();
+    if (newEx) setExercises(p => [...p, newEx]);
+    setScreen("main"); setNavTab("exercises");
+  };
+
+  const deleteExercise = async (id) => {
+    await supabase.from("exercises").delete().eq("id", id);
+    setExercises(p => p.filter(e => e.id !== id));
+    setSessions(p => p.filter(s => s.exercise_id !== id));
+    setScreen("main"); setNavTab("exercises");
+  };
+
+  const logSession = async (data) => {
+    const { data: newSess } = await supabase.from("sessions").insert(data).select().single();
+    if (newSess) setSessions(p => [newSess, ...p]);
+  };
 
   const NAV=[{id:"today",label:"Hoy",icon:Icons.flame},{id:"exercises",label:"Ejercicios",icon:Icons.dumbbell}];
 
@@ -613,7 +622,7 @@ export default function App() {
       {screen==="main"&&(
         <>
           {navTab==="today"&&<TodayScreen exercises={exercises} sessions={sessions} onLogSession={logSession}/>}
-          {navTab==="exercises"&&<HomeScreen exercises={exercises} sessions={sessions} onSelect={ex=>{setSelected(ex);setScreen("detail");}} onAdd={()=>setScreen("add")}/>}
+          {navTab==="exercises"&&<HomeScreen exercises={exercises} sessions={sessions} loading={loading} onSelect={ex=>{setSelected(ex);setScreen("detail");}} onAdd={()=>setScreen("add")}/>}
           <nav style={{ position:"fixed", bottom:0, left:"50%", transform:"translateX(-50%)", width:"100%", maxWidth:430, background:"rgba(247,245,242,0.92)", backdropFilter:"blur(12px)", borderTop:`1px solid ${T.border}`, display:"flex", padding:"10px 0 22px" }}>
             {NAV.map(t=>(
               <button key={t.id} onClick={()=>setNavTab(t.id)} style={{ flex:1, background:"none", border:"none", cursor:"pointer", display:"flex", flexDirection:"column", alignItems:"center", gap:4, color:navTab===t.id?T.text:T.dim, fontSize:9, fontWeight:700, letterSpacing:".08em", textTransform:"uppercase", transition:"color .2s" }}>
